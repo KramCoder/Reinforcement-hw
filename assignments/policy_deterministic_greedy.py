@@ -3,6 +3,12 @@ from typing import override
 from interfaces.policy import Policy
 
 class Policy_DeterministicGreedy(Policy):
+    """
+    Deterministic greedy policy implementation
+    
+    The greedy policy concept is described throughout Sutton & Barto 2nd edition,
+    particularly in Chapter 2 (Section 2.3) and Chapter 3 (Section 3.1).
+    """
     def __init__(self, Q: np.ndarray):
         self.Q = Q
 
