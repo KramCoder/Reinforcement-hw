@@ -166,7 +166,7 @@ def action_for_n_step_bootstrap(args):
         num_episodes=num_episodes,
         alpha_td=args.alpha_td,
         hyperparameters=hyperparameters,
-        save_video = args.save_video
+        save_video = getattr(args, 'save_video', False)
     )
 
 
