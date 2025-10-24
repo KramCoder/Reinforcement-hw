@@ -16,6 +16,7 @@ def on_policy_n_step_td(
 ) -> Tuple[np.array]:
     """
     n-step TD algorithm implementation
+    Sutton & Barto, p. 144, "On-policy n-step TD for evaluating a policy"
     """
 
     # copy initial values
@@ -60,6 +61,7 @@ class NStepSARSAHyperparameters(Hyperparameters):
 class NStepSARSA(Solver):
     """
     N-Step SARSA implementation
+    Sutton & Barto, p. 149, "Off-policy n-step SARSA for learning an optimal policy"
     """
     def __init__(self, env: gym.Env, hyperparameters: NStepSARSAHyperparameters):
         super().__init__("NStepSARSA", env, hyperparameters)

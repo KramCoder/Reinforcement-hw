@@ -3,6 +3,10 @@ from typing import override
 from interfaces.policy import Policy
 
 class Policy_DeterministicGreedy(Policy):
+    """
+    Deterministic greedy policy implementation
+    Sutton & Barto, p. 83, "Greedy policy" (as referenced in Value Iteration)
+    """
     def __init__(self, Q: np.ndarray):
         self.Q = Q
 
