@@ -126,8 +126,10 @@ class NStepSARSA(Solver):
                 G += (gamma ** n) * Q[next_state, next_action]
 
             # importance sampling ratio
+            # Include factor at k = min(t + n, T - 1) per 2020 errata
             rho = 1.0
-            for k in range(t + 1, tau_end):
+            end_k = min(t + n, T - 1)
+            for k in range(t + 1, end_k + 1):
                 pi_prob = self.pi.action_prob(states[k], actions[k])
                 b_prob = bpi.action_prob(states[k], actions[k])
                 if pi_prob == 0.0:
