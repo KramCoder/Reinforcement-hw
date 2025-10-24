@@ -16,6 +16,8 @@ def on_policy_n_step_td(
 ) -> Tuple[np.array]:
     """
     n-step TD algorithm implementation
+    
+    The algorithm can be found in Sutton & Barto 2nd edition p. 144.
     """
 
     # copy initial values
@@ -60,6 +62,8 @@ class NStepSARSAHyperparameters(Hyperparameters):
 class NStepSARSA(Solver):
     """
     N-Step SARSA implementation
+    
+    The algorithm can be found in Sutton & Barto 2nd edition p. 149.
     """
     def __init__(self, env: gym.Env, hyperparameters: NStepSARSAHyperparameters):
         super().__init__("NStepSARSA", env, hyperparameters)
