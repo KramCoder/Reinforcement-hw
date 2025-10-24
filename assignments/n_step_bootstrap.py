@@ -15,24 +15,10 @@ def on_policy_n_step_td(
     gamma: float = 1.0
 ) -> Tuple[np.array]:
     """
-    Runs the on-policy n-step TD algorithm to estimate the value function for a given policy.
-
-    Sutton & Barto, p. 144, "n-step TD Prediction"
-
-    Parameters:
-        trajs (list): N trajectories generated using an unknown policy. Each trajectory is a 
-            list in which each element is a tuple representing (s_t,a_t,r_{t+1},s_{t+1})
-        n (int): The number of steps (the "n" in n-step TD)
-        alpha (float): The learning rate
-        initV (np.ndarray): initial V values; np array shape of [nS]
-        gamma (float): The discount factor
-
-    Returns:
-        V (np.ndarray): $v_pi$ function; numpy array shape of [nS]
+    n-step TD algorithm implementation
     """
 
-    # Implement On-Policy n-Step TD Prediction (Sutton & Barto, p.144)
-    # Iterate through all trajectories and perform TD updates on V
+    # copy initial values
     V = np.array(initV, dtype=float)
 
     for traj in trajs:
@@ -40,26 +26,25 @@ def on_policy_n_step_td(
         if T == 0:
             continue
 
-        # Reconstruct states and rewards arrays from the trajectory
-        # Each element of traj is (s_t, a_t, r_{t+1}, s_{t+1})
+        # get states and rewards from trajectory
         states = [transition[0] for transition in traj]
-        states.append(traj[-1][3])  # s_T
+        states.append(traj[-1][3])  # add final state
         rewards = [transition[2] for transition in traj]
 
-        # Perform n-step TD updates for each time step t
+        # do n-step updates
         for t in range(T):
             tau_end = min(t + n, T)
 
-            # n-step return
+            # calculate n-step return
             G = 0.0
-            power = 0
             for k in range(t, tau_end):
-                G += (gamma ** power) * rewards[k]
-                power += 1
+                G += (gamma ** (k - t)) * rewards[k]
 
+            # add bootstrap value if not at end
             if t + n < T:
                 G += (gamma ** n) * V[states[t + n]]
 
+            # update V
             s_t = states[t]
             V[s_t] += alpha * (G - V[s_t])
 
@@ -67,63 +52,35 @@ def on_policy_n_step_td(
 
 
 class NStepSARSAHyperparameters(Hyperparameters):
-    """ Hyperparameters for NStepSARSA algorithm """
     def __init__(self, gamma: float, alpha: float, n: int):
-        """
-        Parameters:
-            gamma (float): The discount factor
-            alpha (float): The learning rate
-            n (int): The number of steps (the "n" in n-step SARSA)
-        """
         super().__init__(gamma)
         self.alpha = alpha
-        """The learning rate"""
         self.n = n
-        """The number of steps (the "n" in n-step SARSA)"""
 
 class NStepSARSA(Solver):
     """
-    Solver for N-Step SARSA algorithm, good for discrete state and action spaces.
-
-    Off-policy algorithm, using weighted importance sampling.
+    N-Step SARSA implementation
     """
     def __init__(self, env: gym.Env, hyperparameters: NStepSARSAHyperparameters):
         super().__init__("NStepSARSA", env, hyperparameters)
         self.pi = Policy_DeterministicGreedy(np.ones((env.observation_space.n, env.action_space.n)))
 
     def action(self, state):
-        """
-        Chooses an action based on the current policy.
-
-        Parameters:
-            state (int): The current state
-        
-        Returns:
-            int: The action to take
-        """
         return self.pi.action(state)
 
     def train_episode(self):
-        """
-        Trains the agent for a single episode.
-
-        Returns:
-            float: The total (undiscounted) reward for the episode
-        """
-
-        # Off-Policy n-Step SARSA (Sutton & Barto, p.149)
+        # n-step SARSA with importance sampling
         hp: NStepSARSAHyperparameters = self.hyperparameters
         gamma = hp.gamma
         alpha = hp.alpha
         n = hp.n
 
-        # Behavior policy (uniform random)
+        # use random policy to generate episode
         bpi = RandomPolicy(self.env.action_space.n)
-
-        # Generate one episode using the behavior policy
-        states: list[int] = []
-        actions: list[int] = []
-        rewards: list[float] = []
+        
+        states = []
+        actions = []
+        rewards = []
 
         episode_G = 0.0
         state, _ = self.env.reset()
@@ -133,7 +90,7 @@ class NStepSARSA(Solver):
             action = bpi.action(state)
             next_state, reward, terminated, truncated, _ = self.env.step(action)
 
-            # Log transition
+            # store transition
             states.append(state)
             actions.append(action)
             rewards.append(reward)
@@ -142,32 +99,31 @@ class NStepSARSA(Solver):
             state = next_state
             done = terminated or truncated
 
-        # Append terminal (or last) state
+        # add final state
         states.append(state)
 
         T = len(rewards)
         if T == 0:
             return episode_G
 
-        # Perform n-step SARSA updates with weighted importance sampling
-        Q = self.pi.Q  # reference to policy's Q-table
+        # do n-step updates
+        Q = self.pi.Q
 
         for t in range(T):
             tau_end = min(t + n, T)
 
-            # Compute n-step return G
+            # calculate n-step return
             G = 0.0
-            power = 0
             for k in range(t, tau_end):
-                G += (gamma ** power) * rewards[k]
-                power += 1
-            # Bootstrapping term uses the target policy's greedy action at time t+n
+                G += (gamma ** (k - t)) * rewards[k]
+            
+            # add bootstrap value
             if t + n < T:
                 next_state = states[t + n]
                 next_action = self.pi.action(next_state)
                 G += (gamma ** n) * Q[next_state, next_action]
 
-            # Importance sampling ratio ρ from k=t+1 to min(t+n, T-1)
+            # importance sampling ratio
             rho = 1.0
             for k in range(t + 1, tau_end):
                 pi_prob = self.pi.action_prob(states[k], actions[k])
@@ -177,6 +133,7 @@ class NStepSARSA(Solver):
                     break
                 rho *= pi_prob / b_prob
 
+            # update Q value
             s_t = states[t]
             a_t = actions[t]
             Q[s_t, a_t] += alpha * rho * (G - Q[s_t, a_t])
